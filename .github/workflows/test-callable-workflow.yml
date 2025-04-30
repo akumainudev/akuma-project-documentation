@@ -1,0 +1,26 @@
+# Test Workflow: Call Basic Task Executor
+name: Test Callable Workflow
+
+on:
+  workflow_dispatch: # Allows manual triggering
+    inputs:
+      test_context:
+        description: "Test context data to pass"
+        required: false
+        default: '{"source":"manual_test", "value":123}'
+
+jobs:
+  call_executor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Basic Task Executor Workflow
+        uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
+        with:
+          task_id: "test-001"
+          task_description: "Manually triggered test call"
+          context_data: ${{ github.event.inputs.test_context || '{"default":"context"}' }}
+
+      # Optional: Check the output from the called workflow
+      # - name: Check Executor Output
+      #   run: echo "Executor result: ${{ steps.call_executor.outputs.result }}"
+
