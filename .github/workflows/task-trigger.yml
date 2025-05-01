@@ -1,4 +1,4 @@
-# Workflow: Trigger Task Executor (Corrected Structure)
+# Workflow: Trigger Task Executor (Reads Task File)
 name: Task Trigger
 
 on:
@@ -11,14 +11,60 @@ on:
   workflow_dispatch:
 
 jobs:
+  read_task_file: # New job to read the task file content
+    runs-on: ubuntu-latest
+    outputs:
+      task_json: ${{ steps.read_file.outputs.content }}
+      task_id: ${{ steps.get_filename.outputs.filename }} # Use filename as task_id
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need history to compare changes
+
+      - name: Get changed JSON file
+        id: get_file
+        run: |
+          # Get the first added/modified JSON file in the tasks directory from the last commit
+          # Note: This assumes only one task file is pushed per commit for simplicity
+          changed_file=$(git diff --name-only HEAD~1 HEAD | grep '^tasks/.*\.json$' | head -n 1)
+          if [ -z "$changed_file" ]; then
+            echo "No relevant JSON file changed in the last commit."
+            # Handle manual trigger or other cases if needed
+            # For now, we'll let it proceed with an empty path, which should cause the next step to fail gracefully
+            changed_file=""
+          fi
+          echo "file_path=$changed_file" >> $GITHUB_OUTPUT
+
+      - name: Get filename without extension
+        id: get_filename
+        # Only run if a file was found
+        if: steps.get_file.outputs.file_path != ''
+        run: |
+          filename=$(basename "${{ steps.get_file.outputs.file_path }}" .json)
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+
+      - name: Read file content
+        id: read_file
+        # Only run if a file was found
+        if: steps.get_file.outputs.file_path != ''
+        run: |
+          echo "Reading content from: ${{ steps.get_file.outputs.file_path }}"
+          content=$(cat "${{ steps.get_file.outputs.file_path }}")
+          # Use heredoc syntax for multiline output
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$content" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
   trigger_executor:
-    # Correctly call the reusable workflow at the job level
+    needs: read_task_file # Depends on the job that reads the file
+    # Only run if a task file was successfully read
+    if: needs.read_task_file.outputs.task_json != ''
     uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
-    # Pass inputs directly to the reusable workflow
     with:
-      task_id: "hardcoded-test-002"
-      task_description: "Testing corrected trigger structure"
-      # Pass minimal, valid JSON string
-      context_data: "{}"
-    # Secrets need to be inherited if the reusable workflow needs them
-    secrets: inherit # Uncomment if basic-task-executor needs secrets like ACTIONS_PAT
+      task_id: ${{ needs.read_task_file.outputs.task_id }} # Use filename from previous job
+      task_description: "Triggered by push to tasks/"
+      # Pass the actual JSON content read from the file
+      context_data: ${{ needs.read_task_file.outputs.task_json }}
+    secrets: inherit # Pass secrets down
+
