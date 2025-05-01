@@ -4,13 +4,13 @@ name: Task Trigger
 on:
   push:
     branches:
-      - master
+      - master # Changed back to master
     paths:
       - 'tasks/**.json'
   # Allow manual trigger for easier testing
   workflow_dispatch:
 
-cïbs:
+jobs: # Corrected keyword
   trigger_executor:
     runs-on: ubuntu-latest
     steps:
