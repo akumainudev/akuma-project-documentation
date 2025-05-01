@@ -21,4 +21,4 @@ jobs:
       # Pass minimal, valid JSON string
       context_data: "{}"
     # Secrets need to be inherited if the reusable workflow needs them
-    # secrets: inherit # Uncomment if basic-task-executor needs secrets like ACTIONS_PAT
+    secrets: inherit # Uncomment if basic-task-executor needs secrets like ACTIONS_PAT
