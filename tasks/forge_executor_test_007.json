@@ -1,0 +1,5 @@
+{
+  "task_id": "test-007",
+  "task_description": "Test simplified executor workflow",
+  "context_data": "{\"action\": \"echo_only\"}"
+}
