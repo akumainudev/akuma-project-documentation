@@ -1,4 +1,4 @@
-# Workflow: Trigger Task Executor on New Task File
+# Workflow: Trigger Task Executor (Simplified for Debugging)
 name: Task Trigger
 
 on:
@@ -7,56 +7,22 @@ on:
       - master
     paths:
       - 'tasks/**.json'
+  # Allow manual trigger for easier testing
+  workflow_dispatch:
 
-jobs:
+cïbs:
   trigger_executor:
     runs-on: ubuntu-latest
     steps:
+      # Checkout code is still needed for the 'uses:' path to resolve correctly
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2 # Needed to compare commits and find added files
+        uses: actions/checkout@3v4
 
-      - name: Get Added Task File
-        id: get_file
-        run: |
-          # Get list of added/modified files in the tasks directory ending with .json
-          added_file=$(git diff --name-only --diff-filter=A HEAD^ HEAD -- 'tasks/**.json')
-          if [ -z "$added_file" ]; then
-            echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] WARN: No new .json file found in tasks/ directory in this push. Exiting."
-            exit 0 # Exit gracefully if no new file found (e.g., if file was modified/deleted)
-          fi
-          # Assuming only one task file is added per push for simplicity
-          echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] INFO: Detected new task file: $added_file"
-          echo "task_file_path=$added_file" >> "$GITHUB_OUTPUT"
-
-      - name: Read Task File Content
-        id: read_file
-        if: steps.get_file.outputs.task_file_path != '' # Only run if a file was found
-        run: |
-          file_path="${{ steps.get_file.outputs.task_file_path }}"
-          echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] INFO: Reading content from $file_path"
-          # Read file content and store it in an environment variable for toJson
-          file_content=$(cat "$file_path")
-          echo "TASK_CONTENT<<EOF" >> $GITHUB_ENV
-          echo "$file_content" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          # Extract filename without extension for task_id
-          task_id=$(basename "$file_path" .json)
-          echo "task_id=$task_id" >> "$GITHUB_OUTPUT"
-
-      - name: Call Basic Task Executor Workflow
-        if: steps.get_file.outputs.task_file_path != '' # Only run if a file was found
+      - name: Call Basic Task Executor Workflow (Simplified Call)
+        # No 'if' condition, always run
         uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
         with:
-          task_id: ${{ steps.read_file.outputs.task_id }}
-          task_description: "Triggered by new file: ${{ steps.get_file.outputs.task_file_path }}"
-          # Use toJson to correctly format the content as a JSON string literal
-          context_data: ${{ toJson(env.TASK_CONTENT) }}
-
-      - name: Report Trigger Completion
-        if: steps.get_file.outputs.task_file_path != '' # Only run if a file was found
-        run: |
-          echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] INFO: Successfully triggered basic-task-executor for task ID: ${{ steps.read_file.outputs.task_id }}"
-
-
+          task_id: "hardcoded-test-001"
+          task_description: "Testing simplified trigger with hardcoded inputs"
+          # Pass minimal, valid JSON string
+          context_data: "{}"
