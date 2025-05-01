@@ -1,4 +1,4 @@
-# Workflow: Trigger Task Executor (Reads Task File v2)
+# Workflow: Trigger Task Executor (Reads Task File v3 - Correct toJSON usage)
 name: Task Trigger
 
 on:
@@ -14,7 +14,7 @@ jobs:
   read_task_file: # New job to read the task file content
     runs-on: ubuntu-latest
     outputs:
-      task_json: ${{ steps.set_output.outputs.content }} # Output from the step using toJSON
+      task_json: ${{ steps.read_file.outputs.content }} # Raw JSON content
       task_id: ${{ steps.get_filename.outputs.filename }} # Use filename as task_id
     steps:
       - name: Checkout code
@@ -44,36 +44,27 @@ jobs:
           filename=$(basename "${{ steps.get_file.outputs.file_path }}" .json)
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
-      - name: Read file content to ENV
-        id: read_file_env
+      - name: Read file content and set output
+        id: read_file
         # Only run if a file was found
         if: steps.get_file.outputs.file_path != ''
         run: |
           echo "Reading content from: ${{ steps.get_file.outputs.file_path }}"
-          # Read content and store it in an environment variable using heredoc
           content=$(cat "${{ steps.get_file.outputs.file_path }}")
-          echo "JSON_CONTENT<<EOF" >> $GITHUB_ENV
-          echo "$content" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Set JSON output using toJSON
-        id: set_output
-        # Only run if a file was found and content read
-        if: steps.get_file.outputs.file_path != ''
-        run: |
-          # Use the toJSON function on the environment variable
-          # Ensure the output is properly formatted for the next job
-          echo "content=${{ toJSON(env.JSON_CONTENT) }}" >> $GITHUB_OUTPUT
+          # Use heredoc syntax for multiline output
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$content" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   trigger_executor:
     needs: read_task_file # Depends on the job that reads the file
-    # Only run if a task file was successfully read and output set
+    # Only run if a task file was successfully read
     if: needs.read_task_file.outputs.task_json != ''
     uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
     with:
       task_id: ${{ needs.read_task_file.outputs.task_id }} # Use filename from previous job
       task_description: "Triggered by push to tasks/"
-      # Pass the actual JSON content read from the file (now properly escaped by toJSON)
-      context_data: ${{ needs.read_task_file.outputs.task_json }}
+      # Apply toJSON() here when passing the raw JSON content as input
+      context_data: ${{ toJSON(needs.read_task_file.outputs.task_json) }}
     secrets: inherit # Pass secrets down
 
