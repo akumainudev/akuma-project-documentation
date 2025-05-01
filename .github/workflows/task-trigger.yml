@@ -1,28 +1,24 @@
-# Workflow: Trigger Task Executor (Simplified for Debugging)
+# Workflow: Trigger Task Executor (Corrected Structure)
 name: Task Trigger
 
 on:
   push:
     branches:
-      - master # Changed back to master
+      - master
     paths:
       - 'tasks/**.json'
   # Allow manual trigger for easier testing
   workflow_dispatch:
 
-jobs: # Corrected keyword
+jobs:
   trigger_executor:
-    runs-on: ubuntu-latest
-    steps:
-      # Checkout code is still needed for the 'uses:' path to resolve correctly
-      - name: Checkout code
-        uses: actions/checkout@3v4
-
-      - name: Call Basic Task Executor Workflow (Simplified Call)
-        # No 'if' condition, always run
-        uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
-        with:
-          task_id: "hardcoded-test-001"
-          task_description: "Testing simplified trigger with hardcoded inputs"
-          # Pass minimal, valid JSON string
-          context_data: "{}"
+    # Correctly call the reusable workflow at the job level
+    uses: akumainudev/akuma-cicd-factory/.github/workflows/basic-task-executor.yml@main
+    # Pass inputs directly to the reusable workflow
+    with:
+      task_id: "hardcoded-test-002"
+      task_description: "Testing corrected trigger structure"
+      # Pass minimal, valid JSON string
+      context_data: "{}"
+    # Secrets need to be inherited if the reusable workflow needs them
+    # secrets: inherit # Uncomment if basic-task-executor needs secrets like ACTIONS_PAT
