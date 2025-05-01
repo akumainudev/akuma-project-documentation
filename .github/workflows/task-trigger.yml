@@ -36,11 +36,11 @@ jobs:
         run: |
           file_path="${{ steps.get_file.outputs.task_file_path }}"
           echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] INFO: Reading content from $file_path"
-          # Read file content, escape special characters for JSON compatibility if needed, but pass as string for now
+          # Read file content and store it in an environment variable for toJson
           file_content=$(cat "$file_path")
-          # Make content safe to pass as a single-line string input
-          escaped_content=$(echo "$file_content" | tr -d '\n' | sed 's/"/\\"/g')
-          echo "task_content=$escaped_content" >> "$GITHUB_OUTPUT"
+          echo "TASK_CONTENT<<EOF" >> $GITHUB_ENV
+          echo "$file_content" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
           # Extract filename without extension for task_id
           task_id=$(basename "$file_path" .json)
           echo "task_id=$task_id" >> "$GITHUB_OUTPUT"
@@ -51,10 +51,12 @@ jobs:
         with:
           task_id: ${{ steps.read_file.outputs.task_id }}
           task_description: "Triggered by new file: ${{ steps.get_file.outputs.task_file_path }}"
-          context_data: ${{ steps.read_file.outputs.task_content }}
+          # Use toJson to correctly format the content as a JSON string literal
+          context_data: ${{ toJson(env.TASK_CONTENT) }}
 
       - name: Report Trigger Completion
         if: steps.get_file.outputs.task_file_path != '' # Only run if a file was found
         run: |
           echo "[$(date +%Y-%m-%dT%H:%M:%SZ)] INFO: Successfully triggered basic-task-executor for task ID: ${{ steps.read_file.outputs.task_id }}"
+
 
